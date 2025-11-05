@@ -32,24 +32,27 @@ export function LoginScreen({
   const [isLoading, setIsLoading] = useState(false)
 
   // GOOGLE OAUTH (redirect)
-  const handleGoogleAuth = async () => {
-    if (isLoading) return
-    setIsLoading(true)
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin },
-      })
-      if (error) {
-        alert(error.message)
-        setIsLoading(false)
-      }
-      // No onLogin call here because OAuth redirects back; App reads session on load.
-    } catch (err: any) {
-      alert(err?.message || 'Google sign-in failed.')
-      setIsLoading(false)
+const handleGoogleAuth = async () => {
+  if (isLoading) return;
+  setIsLoading(true);
+  try {
+    const redirectTo =
+      import.meta.env.VITE_SITE_URL || window.location.origin;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    });
+    if (error) {
+      alert(error.message);
+      setIsLoading(false);
     }
+    // On success, Supabase will redirect; we don't clear loading here.
+  } catch (err: any) {
+    alert(err?.message || 'Google sign-in failed.');
+    setIsLoading(false);
   }
+}
 
   // Auto-trigger Google when coming from Splash’s “Continue with Google”
   useEffect(() => {
