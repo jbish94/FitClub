@@ -4,16 +4,28 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Logo } from './Logo'
 import { supabase } from '../lib/supabase'
+import { useEffect } from 'react';
+
+// ...
+
+useEffect(() => {
+  if (autoGoogle) {
+    // call your existing Google handler
+    handleGoogleAuth();
+    onAutoGoogleHandled?.(); // reset flag in App so it fires once
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [autoGoogle]);
+
 
 interface LoginScreenProps {
-  onLogin: (userData: {
-    email: string
-    name: string
-    authMethod: 'google' | 'apple' | 'email'
-    isLogin: boolean
-  }) => void
-  onBack: () => void
-  mode?: 'login' | 'signup'
+  onLogin: (userData: { email: string; name: string; authMethod: 'google' | 'apple' | 'email'; isLogin: boolean }) => void;
+  onBack: () => void;
+  mode?: 'login' | 'signup';
+  autoGoogle?: boolean;                
+  onAutoGoogleHandled?: () => void;    
+}
+
 }
 
 /**
