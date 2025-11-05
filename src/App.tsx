@@ -9,7 +9,7 @@ import { OrganizerDashboard } from './components/OrganizerDashboard';
 import { ProfileScreen } from './components/ProfileScreen';
 import { MyActivityScreen } from './components/MyActivityScreen';
 
-type Screen = 
+type Screen =
   | 'splash'
   | 'login'
   | 'onboarding'
@@ -54,15 +54,23 @@ export default function App() {
       try {
         const storedData = localStorage.getItem(STORAGE_KEY);
         if (storedData) {
-          const parsedData = JSON.parse(storedData);
+          const parsedData = JSON.parse(storedData) as UserData;
           setUserData(parsedData);
-          // If user is logged in and has completed onboarding, go directly to home
+
+          // Route based on onboarding state
           if (parsedData.email && parsedData.hasCompletedOnboarding) {
             setCurrentScreen('home');
+          } else if (parsedData.email && !parsedData.hasCompletedOnboarding) {
+            setCurrentScreen('onboarding');
+          } else {
+            setCurrentScreen('splash');
           }
+        } else {
+          setCurrentScreen('splash');
         }
       } catch (error) {
         console.error('Error loading user data:', error);
+        setCurrentScreen('splash');
       } finally {
         setIsLoading(false);
       }
@@ -73,12 +81,10 @@ export default function App() {
 
   // Save user data to localStorage whenever it changes
   useEffect(() => {
-    if (userData.email) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-      } catch (error) {
-        console.error('Error saving user data:', error);
-      }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+    } catch (error) {
+      console.error('Error saving user data:', error);
     }
   }, [userData]);
 
@@ -94,11 +100,12 @@ export default function App() {
     );
   }
 
+  // UPDATED: Get Started now takes the user to onboarding, not login
   const handleGetStarted = () => {
-    setLoginMode('signup');
-    setCurrentScreen('login');
+    setCurrentScreen('onboarding');
   };
 
+  // Splash → Login (for both "Continue with Google" and "Log In" actions from SplashScreen)
   const handleShowLogin = () => {
     setLoginMode('login');
     setCurrentScreen('login');
@@ -106,41 +113,40 @@ export default function App() {
 
   /**
    * Handles login/signup completion from LoginScreen.
-   * 
+   *
    * Flow:
    * 1. Check localStorage for existing user data with same email
    * 2. If isLogin=true OR existing data found with hasCompletedOnboarding=true:
-   *    - Restore full user profile (userType, interests, location, etc.)
-   *    - Skip onboarding, go directly to home
+   *    - Restore full user profile and go directly to home
    * 3. If new user (no existing data or incomplete onboarding):
-   *    - Set basic auth info
-   *    - Navigate to 3-step onboarding flow
+   *    - Set basic auth info and go to onboarding flow
    */
-  const handleLogin = (authData: { email: string; name: string; authMethod: 'google' | 'apple' | 'email'; isLogin: boolean }) => {
-    // Check if user has existing data (returning user)
-    const existingData = localStorage.getItem(STORAGE_KEY);
+  const handleLogin = (authData: {
+    email: string;
+    name: string;
+    authMethod: 'google' | 'apple' | 'email';
+    isLogin: boolean;
+  }) => {
+    const existingDataRaw = localStorage.getItem(STORAGE_KEY);
     let isReturningUser = false;
-    let existingUserData = null;
-    
-    if (existingData) {
+    let existingUserData: UserData | null = null;
+
+    if (existingDataRaw) {
       try {
-        const parsedData = JSON.parse(existingData);
-        // If user clicked "Log In" or has matching email with completed onboarding
-        if (authData.isLogin || (parsedData.email === authData.email && parsedData.hasCompletedOnboarding)) {
+        const parsed = JSON.parse(existingDataRaw) as UserData;
+        if (authData.isLogin || (parsed.email === authData.email && parsed.hasCompletedOnboarding)) {
           isReturningUser = true;
-          existingUserData = parsedData;
+          existingUserData = parsed;
         }
       } catch (error) {
         console.error('Error checking existing user:', error);
       }
     }
 
-    // If returning user, restore their full profile data (includes interests, userType, location)
     if (isReturningUser && existingUserData) {
       setUserData(existingUserData);
       setCurrentScreen('home');
     } else {
-      // New user - set basic auth data and go to onboarding
       setUserData(prev => ({
         ...prev,
         email: authData.email,
@@ -156,7 +162,9 @@ export default function App() {
     setCurrentScreen('splash');
   };
 
-  const handleOnboardingComplete = (data: Omit<UserData, 'email' | 'name' | 'authMethod' | 'hasCompletedOnboarding'>) => {
+  const handleOnboardingComplete = (
+    data: Omit<UserData, 'email' | 'name' | 'authMethod' | 'hasCompletedOnboarding'>
+  ) => {
     setUserData(prev => ({
       ...prev,
       ...data,
@@ -173,7 +181,6 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    // Clear user data and return to splash
     localStorage.removeItem(STORAGE_KEY);
     setUserData({
       userType: '',
@@ -197,30 +204,16 @@ export default function App() {
     setCurrentScreen('event');
   };
 
-  const handleBackToHome = () => {
-    setCurrentScreen('home');
-  };
-
-  const handleBackToCommunity = () => {
-    setCurrentScreen('community');
-  };
-
-  const handleProfileClick = () => {
-    setCurrentScreen('profile');
-  };
-
-  const handleDashboardClick = () => {
-    setCurrentScreen('dashboard');
-  };
-
-  const handleActivityClick = () => {
-    setCurrentScreen('activity');
-  };
+  const handleBackToHome = () => setCurrentScreen('home');
+  const handleBackToCommunity = () => setCurrentScreen('community');
+  const handleProfileClick = () => setCurrentScreen('profile');
+  const handleDashboardClick = () => setCurrentScreen('dashboard');
+  const handleActivityClick = () => setCurrentScreen('activity');
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl">
       {currentScreen === 'splash' && (
-        <SplashScreen 
+        <SplashScreen
           onGetStarted={handleGetStarted}
           onLogin={handleShowLogin}
         />
@@ -258,10 +251,7 @@ export default function App() {
       )}
 
       {currentScreen === 'event' && (
-        <EventDetail
-          eventId={selectedEventId}
-          onBack={handleBackToCommunity}
-        />
+        <EventDetail eventId={selectedEventId} onBack={handleBackToCommunity} />
       )}
 
       {currentScreen === 'dashboard' && (
