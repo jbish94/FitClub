@@ -36,6 +36,7 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [loginMode, setLoginMode] = useState<'login' | 'signup'>('signup');
   const [isLoading, setIsLoading] = useState(true);
+  const [autoGoogle, setAutoGoogle] = useState(false); // ⬅️ NEW
   const [userData, setUserData] = useState<UserData>({
     userType: '',
     interests: [],
@@ -48,43 +49,33 @@ export default function App() {
   const [selectedCommunityId, setSelectedCommunityId] = useState<string>('');
   const [selectedEventId, setSelectedEventId] = useState<string>('');
 
-  // Load user data from localStorage on mount
   useEffect(() => {
-    const loadUserData = () => {
-      try {
-        const storedData = localStorage.getItem(STORAGE_KEY);
-        if (storedData) {
-          const parsedData = JSON.parse(storedData) as UserData;
-          setUserData(parsedData);
-
-          if (parsedData.email && parsedData.hasCompletedOnboarding) {
-            setCurrentScreen('home');
-          } else if (parsedData.email && !parsedData.hasCompletedOnboarding) {
-            setCurrentScreen('onboarding');
-          } else {
-            setCurrentScreen('splash');
-          }
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as UserData;
+        setUserData(parsed);
+        if (parsed.email && parsed.hasCompletedOnboarding) {
+          setCurrentScreen('home');
+        } else if (parsed.email && !parsed.hasCompletedOnboarding) {
+          setCurrentScreen('onboarding');
         } else {
           setCurrentScreen('splash');
         }
-      } catch (error) {
-        console.error('Error loading user data:', error);
+      } else {
         setCurrentScreen('splash');
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    loadUserData();
+    } catch {
+      setCurrentScreen('splash');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // Persist user data
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-    } catch (error) {
-      console.error('Error saving user data:', error);
-    }
+    } catch {}
   }, [userData]);
 
   if (isLoading) {
@@ -98,42 +89,49 @@ export default function App() {
     );
   }
 
-  // ⬅️ CHANGE #1: Get Started → Login (signup mode)
+  // Splash actions
   const handleGetStarted = () => {
     setLoginMode('signup');
+    setAutoGoogle(false);
     setCurrentScreen('login');
   };
 
   const handleShowLogin = () => {
     setLoginMode('login');
+    setAutoGoogle(false);
     setCurrentScreen('login');
   };
 
-  // Login complete handler
+  // ⬅️ NEW: Splash → Google OAuth path (via Login)
+  const handleGoogleFromSplash = () => {
+    setLoginMode('login');   // mode label only; OAuth handles new/returning
+    setAutoGoogle(true);     // tell LoginScreen to auto-run Google
+    setCurrentScreen('login');
+  };
+
+  // Auth completion
   const handleLogin = (authData: {
     email: string;
     name: string;
     authMethod: 'google' | 'apple' | 'email';
     isLogin: boolean;
   }) => {
-    const existingDataRaw = localStorage.getItem(STORAGE_KEY);
-    let isReturningUser = false;
-    let existingUserData: UserData | null = null;
+    const existingRaw = localStorage.getItem(STORAGE_KEY);
+    let returning = false;
+    let existing: UserData | null = null;
 
-    if (existingDataRaw) {
+    if (existingRaw) {
       try {
-        const parsed = JSON.parse(existingDataRaw) as UserData;
+        const parsed = JSON.parse(existingRaw) as UserData;
         if (authData.isLogin || (parsed.email === authData.email && parsed.hasCompletedOnboarding)) {
-          isReturningUser = true;
-          existingUserData = parsed;
+          returning = true;
+          existing = parsed;
         }
-      } catch (error) {
-        console.error('Error checking existing user:', error);
-      }
+      } catch {}
     }
 
-    if (isReturningUser && existingUserData) {
-      setUserData(existingUserData);
+    if (returning && existing) {
+      setUserData(existing);
       setCurrentScreen('home');
     } else {
       setUserData(prev => ({
@@ -152,20 +150,12 @@ export default function App() {
   const handleOnboardingComplete = (
     data: Omit<UserData, 'email' | 'name' | 'authMethod' | 'hasCompletedOnboarding'>
   ) => {
-    setUserData(prev => ({
-      ...prev,
-      ...data,
-      hasCompletedOnboarding: true
-    }));
+    setUserData(prev => ({ ...prev, ...data, hasCompletedOnboarding: true }));
     setCurrentScreen('home');
   };
 
-  const handleUpdateInterests = (newInterests: string[]) => {
-    setUserData(prev => ({
-      ...prev,
-      interests: newInterests
-    }));
-  };
+  const handleUpdateInterests = (interests: string[]) =>
+    setUserData(prev => ({ ...prev, interests }));
 
   const handleLogout = () => {
     localStorage.removeItem(STORAGE_KEY);
@@ -181,13 +171,13 @@ export default function App() {
     setCurrentScreen('splash');
   };
 
-  const handleCommunitySelect = (communityId: string) => {
-    setSelectedCommunityId(communityId);
+  const handleCommunitySelect = (id: string) => {
+    setSelectedCommunityId(id);
     setCurrentScreen('community');
   };
 
-  const handleEventSelect = (eventId: string) => {
-    setSelectedEventId(eventId);
+  const handleEventSelect = (id: string) => {
+    setSelectedEventId(id);
     setCurrentScreen('event');
   };
 
@@ -200,11 +190,22 @@ export default function App() {
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl">
       {currentScreen === 'splash' && (
-        <SplashScreen onGetStarted={handleGetStarted} onLogin={handleShowLogin} />
+        <SplashScreen
+          onGetStarted={handleGetStarted}
+          onLogin={handleShowLogin}
+          onGoogleSignIn={handleGoogleFromSplash} // ⬅️ NEW
+          // showApple={false}  // keep hidden for now
+        />
       )}
 
       {currentScreen === 'login' && (
-        <LoginScreen onLogin={handleLogin} onBack={handleBackToSplash} mode={loginMode} />
+        <LoginScreen
+          onLogin={handleLogin}
+          onBack={handleBackToSplash}
+          mode={loginMode}
+          autoGoogle={autoGoogle}                    // ⬅️ NEW
+          onAutoGoogleHandled={() => setAutoGoogle(false)} // ⬅️ NEW
+        />
       )}
 
       {currentScreen === 'onboarding' && (
