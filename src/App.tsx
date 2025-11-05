@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
-import { SplashScreen } from './components/SplashScreen';
-import { LoginScreen } from './components/LoginScreen';
-import { OnboardingFlow } from './components/OnboardingFlow';
-import { HomeScreen } from './components/HomeScreen';
-import { CommunityPage } from './components/CommunityPage';
-import { EventDetail } from './components/EventDetail';
-import { OrganizerDashboard } from './components/OrganizerDashboard';
-import { ProfileScreen } from './components/ProfileScreen';
-import { MyActivityScreen } from './components/MyActivityScreen';
+// src/App.tsx
+import { useState, useEffect } from 'react'
+import { SplashScreen } from './components/SplashScreen'
+import { LoginScreen } from './components/LoginScreen'
+import { OnboardingFlow } from './components/OnboardingFlow'
+import { HomeScreen } from './components/HomeScreen'
+import { CommunityPage } from './components/CommunityPage'
+import { EventDetail } from './components/EventDetail'
+import { OrganizerDashboard } from './components/OrganizerDashboard'
+import { ProfileScreen } from './components/ProfileScreen'
+import { MyActivityScreen } from './components/MyActivityScreen'
+import { supabase } from './lib/supabase'
 
 type Screen =
   | 'splash'
@@ -18,25 +20,24 @@ type Screen =
   | 'event'
   | 'dashboard'
   | 'profile'
-  | 'activity';
+  | 'activity'
 
 interface UserData {
-  userType: string;
-  interests: string[];
-  locationEnabled: boolean;
-  email?: string;
-  name?: string;
-  authMethod?: 'google' | 'apple' | 'email';
-  hasCompletedOnboarding?: boolean;
+  userType: string
+  interests: string[]
+  locationEnabled: boolean
+  email?: string
+  name?: string
+  authMethod?: 'google' | 'apple' | 'email'
+  hasCompletedOnboarding?: boolean
 }
 
-const STORAGE_KEY = 'fitclub_user_data';
+const STORAGE_KEY = 'fitclub_user_data'
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
-  const [loginMode, setLoginMode] = useState<'login' | 'signup'>('signup');
-  const [isLoading, setIsLoading] = useState(true);
-  const [autoGoogle, setAutoGoogle] = useState(false); // ⬅️ NEW
+  const [currentScreen, setCurrentScreen] = useState<Screen>('splash')
+  const [loginMode, setLoginMode] = useState<'login' | 'signup'>('signup')
+  const [booting, setBooting] = useState(true)
   const [userData, setUserData] = useState<UserData>({
     userType: '',
     interests: [],
@@ -44,121 +45,154 @@ export default function App() {
     email: '',
     name: '',
     authMethod: undefined,
-    hasCompletedOnboarding: false
-  });
-  const [selectedCommunityId, setSelectedCommunityId] = useState<string>('');
-  const [selectedEventId, setSelectedEventId] = useState<string>('');
+    hasCompletedOnboarding: false,
+  })
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string>('')
+  const [selectedEventId, setSelectedEventId] = useState<string>('')
 
+  // --- Boot: process Supabase auth (including OAuth hash) and local storage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as UserData;
-        setUserData(parsed);
-        if (parsed.email && parsed.hasCompletedOnboarding) {
-          setCurrentScreen('home');
-        } else if (parsed.email && !parsed.hasCompletedOnboarding) {
-          setCurrentScreen('onboarding');
-        } else {
-          setCurrentScreen('splash');
-        }
-      } else {
-        setCurrentScreen('splash');
-      }
-    } catch {
-      setCurrentScreen('splash');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-    } catch {}
-  }, [userData]);
-
-  if (isLoading) {
-    return (
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#0066FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Splash actions
-  const handleGetStarted = () => {
-    setLoginMode('signup');
-    setAutoGoogle(false);
-    setCurrentScreen('login');
-  };
-
-  const handleShowLogin = () => {
-    setLoginMode('login');
-    setAutoGoogle(false);
-    setCurrentScreen('login');
-  };
-
-  // ⬅️ NEW: Splash → Google OAuth path (via Login)
-  const handleGoogleFromSplash = () => {
-    setLoginMode('login');   // mode label only; OAuth handles new/returning
-    setAutoGoogle(true);     // tell LoginScreen to auto-run Google
-    setCurrentScreen('login');
-  };
-
-  // Auth completion
-  const handleLogin = (authData: {
-    email: string;
-    name: string;
-    authMethod: 'google' | 'apple' | 'email';
-    isLogin: boolean;
-  }) => {
-    const existingRaw = localStorage.getItem(STORAGE_KEY);
-    let returning = false;
-    let existing: UserData | null = null;
-
-    if (existingRaw) {
+    ;(async () => {
       try {
-        const parsed = JSON.parse(existingRaw) as UserData;
-        if (authData.isLogin || (parsed.email === authData.email && parsed.hasCompletedOnboarding)) {
-          returning = true;
-          existing = parsed;
+        // 1) Process session (this also consumes the #access_token hash)
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) console.error('[auth.getSession] error:', error)
+
+        // 2) Load any persisted profile (interests, onboarding flag, etc.)
+        let persisted: UserData | null = null
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY)
+          if (raw) persisted = JSON.parse(raw)
+        } catch {}
+
+        if (session?.user) {
+          const email = session.user.email || ''
+          const name =
+            session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.name ||
+            (email ? email.split('@')[0] : '')
+
+          // merge auth info with persisted profile (if any)
+          const merged: UserData = {
+            userType: persisted?.userType || '',
+            interests: persisted?.interests || [],
+            locationEnabled: persisted?.locationEnabled || false,
+            email,
+            name,
+            authMethod: (persisted?.authMethod ?? 'google') as 'google' | 'apple' | 'email',
+            hasCompletedOnboarding: Boolean(persisted?.hasCompletedOnboarding),
+          }
+          setUserData(merged)
+
+          // route depending on onboarding
+          setCurrentScreen(merged.hasCompletedOnboarding ? 'home' : 'onboarding')
+        } else {
+          // no session: if they had a completed profile we can keep them logged out on splash
+          setCurrentScreen('splash')
         }
+
+        // 3) Clean the URL (remove the OAuth hash) to avoid blank screens and reload quirks
+        if (window.location.hash.includes('access_token')) {
+          window.history.replaceState({}, '', window.location.origin + window.location.pathname)
+        }
+      } finally {
+        setBooting(false)
+      }
+    })()
+  }, [])
+
+  // Keep localStorage in sync when we *have* an email (i.e., logged in)
+  useEffect(() => {
+    if (userData.email) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData))
       } catch {}
     }
+  }, [userData])
 
-    if (returning && existing) {
-      setUserData(existing);
-      setCurrentScreen('home');
-    } else {
-      setUserData(prev => ({
-        ...prev,
-        email: authData.email,
-        name: authData.name,
-        authMethod: authData.authMethod,
-        hasCompletedOnboarding: false
-      }));
-      setCurrentScreen('onboarding');
+  // React to auth changes (e.g., when returning from Google redirect)
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const email = session.user.email || ''
+        const name =
+          session.user.user_metadata?.full_name ||
+          session.user.user_metadata?.name ||
+          (email ? email.split('@')[0] : '')
+
+        setUserData(prev => ({
+          ...prev,
+          email,
+          name,
+          authMethod: (prev.authMethod ?? 'google') as 'google' | 'apple' | 'email',
+        }))
+
+        // decide where to go based on persisted onboarding
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY)
+          const persisted = raw ? JSON.parse(raw) : null
+          const onboarded = Boolean(persisted?.hasCompletedOnboarding)
+          setCurrentScreen(onboarded ? 'home' : 'onboarding')
+        } catch {
+          setCurrentScreen('onboarding')
+        }
+
+        // Clean hash if still present
+        if (window.location.hash.includes('access_token')) {
+          window.history.replaceState({}, '', window.location.origin + window.location.pathname)
+        }
+      }
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  // ---- UI helpers ----
+  const handleGetStarted = () => {
+    setLoginMode('signup')
+    setCurrentScreen('login')
+  }
+  const handleShowLogin = () => {
+    setLoginMode('login')
+    setCurrentScreen('login')
+  }
+  const handleGoogleFromSplash = () => {
+    setLoginMode('signup') // or 'login'—either is fine; the button on Login will start OAuth
+    setCurrentScreen('login')
+  }
+
+  const handleLogin = (authData: { email: string; name: string; authMethod: 'google' | 'apple' | 'email'; isLogin: boolean }) => {
+    // This path is mainly for email/password; Google uses redirect & onAuthStateChange
+    const raw = localStorage.getItem(STORAGE_KEY)
+    let persisted: UserData | null = null
+    try { if (raw) persisted = JSON.parse(raw) } catch {}
+
+    if (authData.isLogin && persisted && persisted.email === authData.email && persisted.hasCompletedOnboarding) {
+      setUserData(persisted)
+      setCurrentScreen('home')
+      return
     }
-  };
 
-  const handleBackToSplash = () => setCurrentScreen('splash');
+    setUserData(prev => ({
+      ...prev,
+      email: authData.email,
+      name: authData.name,
+      authMethod: authData.authMethod,
+      hasCompletedOnboarding: false,
+    }))
+    setCurrentScreen('onboarding')
+  }
 
-  const handleOnboardingComplete = (
-    data: Omit<UserData, 'email' | 'name' | 'authMethod' | 'hasCompletedOnboarding'>
-  ) => {
-    setUserData(prev => ({ ...prev, ...data, hasCompletedOnboarding: true }));
-    setCurrentScreen('home');
-  };
-
-  const handleUpdateInterests = (interests: string[]) =>
-    setUserData(prev => ({ ...prev, interests }));
+  const handleOnboardingComplete = (data: Omit<UserData, 'email' | 'name' | 'authMethod' | 'hasCompletedOnboarding'>) => {
+    setUserData(prev => ({
+      ...prev,
+      ...data,
+      hasCompletedOnboarding: true,
+    }))
+    setCurrentScreen('home')
+  }
 
   const handleLogout = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY)
     setUserData({
       userType: '',
       interests: [],
@@ -166,26 +200,21 @@ export default function App() {
       email: '',
       name: '',
       authMethod: undefined,
-      hasCompletedOnboarding: false
-    });
-    setCurrentScreen('splash');
-  };
+      hasCompletedOnboarding: false,
+    })
+    setCurrentScreen('splash')
+  }
 
-  const handleCommunitySelect = (id: string) => {
-    setSelectedCommunityId(id);
-    setCurrentScreen('community');
-  };
-
-  const handleEventSelect = (id: string) => {
-    setSelectedEventId(id);
-    setCurrentScreen('event');
-  };
-
-  const handleBackToHome = () => setCurrentScreen('home');
-  const handleBackToCommunity = () => setCurrentScreen('community');
-  const handleProfileClick = () => setCurrentScreen('profile');
-  const handleDashboardClick = () => setCurrentScreen('dashboard');
-  const handleActivityClick = () => setCurrentScreen('activity');
+  if (booting) {
+    return (
+      <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[#0066FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading…</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl">
@@ -193,31 +222,23 @@ export default function App() {
         <SplashScreen
           onGetStarted={handleGetStarted}
           onLogin={handleShowLogin}
-          onGoogleSignIn={handleGoogleFromSplash} // ⬅️ NEW
-          // showApple={false}  // keep hidden for now
+          onGoogle={handleGoogleFromSplash}
+          showApple={false}
         />
       )}
 
       {currentScreen === 'login' && (
-        <LoginScreen
-          onLogin={handleLogin}
-          onBack={handleBackToSplash}
-          mode={loginMode}
-          autoGoogle={autoGoogle}                    // ⬅️ NEW
-          onAutoGoogleHandled={() => setAutoGoogle(false)} // ⬅️ NEW
-        />
+        <LoginScreen onLogin={handleLogin} onBack={() => setCurrentScreen('splash')} mode={loginMode} />
       )}
 
-      {currentScreen === 'onboarding' && (
-        <OnboardingFlow onComplete={handleOnboardingComplete} />
-      )}
+      {currentScreen === 'onboarding' && <OnboardingFlow onComplete={handleOnboardingComplete} />}
 
       {currentScreen === 'home' && (
         <HomeScreen
-          onCommunitySelect={handleCommunitySelect}
-          onProfileClick={handleProfileClick}
-          onDashboardClick={handleDashboardClick}
-          onActivityClick={handleActivityClick}
+          onCommunitySelect={id => { setSelectedCommunityId(id); setCurrentScreen('community') }}
+          onProfileClick={() => setCurrentScreen('profile')}
+          onDashboardClick={() => setCurrentScreen('dashboard')}
+          onActivityClick={() => setCurrentScreen('activity')}
           userType={userData.userType}
           userInterests={userData.interests}
         />
@@ -226,35 +247,36 @@ export default function App() {
       {currentScreen === 'community' && (
         <CommunityPage
           communityId={selectedCommunityId}
-          onBack={handleBackToHome}
-          onEventSelect={handleEventSelect}
+          onBack={() => setCurrentScreen('home')}
+          onEventSelect={id => { setSelectedEventId(id); setCurrentScreen('event') }}
         />
       )}
 
-      {currentScreen === 'event' && (
-        <EventDetail eventId={selectedEventId} onBack={handleBackToCommunity} />
-      )}
+      {currentScreen === 'event' && <EventDetail eventId={selectedEventId} onBack={() => setCurrentScreen('community')} />}
 
-      {currentScreen === 'dashboard' && <OrganizerDashboard onBack={handleBackToHome} />}
+      {currentScreen === 'dashboard' && <OrganizerDashboard onBack={() => setCurrentScreen('home')} />}
 
       {currentScreen === 'profile' && (
         <ProfileScreen
-          onBack={handleBackToHome}
+          onBack={() => setCurrentScreen('home')}
           userType={userData.userType}
           userEmail={userData.email}
           userName={userData.name}
           authMethod={userData.authMethod}
           currentInterests={userData.interests}
-          onUpdateInterests={handleUpdateInterests}
+          onUpdateInterests={ints => setUserData(prev => ({ ...prev, interests: ints }))}
           onLogout={handleLogout}
         />
       )}
 
       {currentScreen === 'activity' && (
-        <MyActivityScreen onBack={handleBackToHome} onCommunitySelect={handleCommunitySelect} />
+        <MyActivityScreen
+          onBack={() => setCurrentScreen('home')}
+          onCommunitySelect={id => { setSelectedCommunityId(id); setCurrentScreen('community') }}
+        />
       )}
     </div>
-  );
+  )
 }
 import { supabase } from './lib/supabase';
 
