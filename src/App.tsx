@@ -256,3 +256,39 @@ export default function App() {
     </div>
   );
 }
+import { supabase } from './lib/supabase';
+
+useEffect(() => {
+  (async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const email = session.user.email || '';
+        const name =
+          session.user.user_metadata?.full_name ||
+          session.user.user_metadata?.name ||
+          (email ? email.split('@')[0] : '');
+
+        setUserData(prev => {
+          const merged = {
+            ...prev,
+            email,
+            name,
+            authMethod: (prev.authMethod ?? 'google') as 'google' | 'apple' | 'email',
+          };
+          return merged;
+        });
+
+        // If you want to force onboarding for new users:
+        const stored = localStorage.getItem('fitclub_user_data');
+        const hasOnboarded = stored ? JSON.parse(stored).hasCompletedOnboarding : false;
+
+        setCurrentScreen(hasOnboarded ? 'home' : 'onboarding');
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setIsLoading(false);
+    }
+  })();
+}, []);
