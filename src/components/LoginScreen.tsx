@@ -1,40 +1,30 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronLeft, Mail, Lock } from 'lucide-react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Logo } from './Logo'
 import { supabase } from '../lib/supabase'
-import { useEffect } from 'react';
-
-// ...
-
-useEffect(() => {
-  if (autoGoogle) {
-    // call your existing Google handler
-    handleGoogleAuth();
-    onAutoGoogleHandled?.(); // reset flag in App so it fires once
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [autoGoogle]);
-
 
 interface LoginScreenProps {
-  onLogin: (userData: { email: string; name: string; authMethod: 'google' | 'apple' | 'email'; isLogin: boolean }) => void;
-  onBack: () => void;
-  mode?: 'login' | 'signup';
-  autoGoogle?: boolean;                
-  onAutoGoogleHandled?: () => void;    
+  onLogin: (userData: {
+    email: string
+    name: string
+    authMethod: 'google' | 'apple' | 'email'
+    isLogin: boolean
+  }) => void
+  onBack: () => void
+  mode?: 'login' | 'signup'
+  autoGoogle?: boolean           // NEW: auto-fire Google on mount when true
+  onAutoGoogleHandled?: () => void // NEW: let App reset the flag
 }
 
-}
-
-/**
- * Uses Supabase for:
- * - Google OAuth (redirect flow)
- * - Email/password login & signup
- * Apple button is hidden for now.
- */
-export function LoginScreen({ onLogin, onBack, mode = 'signup' }: LoginScreenProps) {
+export function LoginScreen({
+  onLogin,
+  onBack,
+  mode = 'signup',
+  autoGoogle = false,
+  onAutoGoogleHandled,
+}: LoginScreenProps) {
   const [isLogin, setIsLogin] = useState(mode === 'login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -54,12 +44,21 @@ export function LoginScreen({ onLogin, onBack, mode = 'signup' }: LoginScreenPro
         alert(error.message)
         setIsLoading(false)
       }
-      // No onLogin call here because we redirect and your app should read the session on load.
+      // No onLogin call here because OAuth redirects back; App reads session on load.
     } catch (err: any) {
       alert(err?.message || 'Google sign-in failed.')
       setIsLoading(false)
     }
   }
+
+  // Auto-trigger Google when coming from Splash’s “Continue with Google”
+  useEffect(() => {
+    if (autoGoogle) {
+      handleGoogleAuth()
+      onAutoGoogleHandled?.() // reset flag in App so it fires once
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGoogle])
 
   // EMAIL/PASSWORD
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -71,6 +70,7 @@ export function LoginScreen({ onLogin, onBack, mode = 'signup' }: LoginScreenPro
       if (isLogin) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+
         const displayName =
           data.user?.user_metadata?.full_name ||
           data.user?.user_metadata?.name ||
