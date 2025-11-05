@@ -64,56 +64,63 @@ const handleGoogleAuth = async () => {
   }, [autoGoogle])
 
   // EMAIL/PASSWORD
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email || !password || (!isLogin && !name)) return
-    setIsLoading(true)
+const handleEmailAuth = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!email || !password || (!isLogin && !name)) return;
+  setIsLoading(true);
 
-    try {
-      if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
+  try {
+    if (isLogin) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
 
-        const displayName =
-          data.user?.user_metadata?.full_name ||
-          data.user?.user_metadata?.name ||
-          email.split('@')[0]
+      const displayName =
+        data.user?.user_metadata?.full_name ||
+        data.user?.user_metadata?.name ||
+        email.split('@')[0];
 
-        onLogin({
-          email: data.user?.email || email,
-          name: displayName,
-          authMethod: 'email',
-          isLogin: true,
-        })
+      onLogin({
+        email: data.user?.email || email,
+        name: displayName,
+        authMethod: 'email',
+        isLogin: true,
+      });
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: import.meta.env.VITE_SITE_URL || window.location.origin,
+        },
+      });
+      if (error) throw error;
+
+      // If email confirmations are ON, there is no session yet.
+      if (!data.session) {
+        alert('Check your email to confirm your account, then return to the app.');
+        // We do NOT call onLogin yet; user must confirm first.
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: name },
-            emailRedirectTo: window.location.origin,
-          },
-        })
-        if (error) throw error
-
         const displayName =
           data.user?.user_metadata?.full_name ||
           data.user?.user_metadata?.name ||
-          name
+          name;
 
         onLogin({
           email: data.user?.email || email,
           name: displayName,
           authMethod: 'email',
           isLogin: false,
-        })
+        });
       }
-    } catch (err: any) {
-      alert(err?.message || 'Authentication failed. Please try again.')
-    } finally {
-      setIsLoading(false)
     }
+  } catch (err: any) {
+    alert(err?.message || 'Authentication failed. Please try again.');
+  } finally {
+    setIsLoading(false);
   }
+}
+
 
   const handlePasswordReset = async () => {
     if (!email) {
