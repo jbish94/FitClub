@@ -57,7 +57,6 @@ export default function App() {
           const parsedData = JSON.parse(storedData) as UserData;
           setUserData(parsedData);
 
-          // Route based on onboarding state
           if (parsedData.email && parsedData.hasCompletedOnboarding) {
             setCurrentScreen('home');
           } else if (parsedData.email && !parsedData.hasCompletedOnboarding) {
@@ -79,7 +78,7 @@ export default function App() {
     loadUserData();
   }, []);
 
-  // Save user data to localStorage whenever it changes
+  // Persist user data
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
@@ -88,7 +87,6 @@ export default function App() {
     }
   }, [userData]);
 
-  // Show loading screen while checking auth
   if (isLoading) {
     return (
       <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl flex items-center justify-center">
@@ -100,27 +98,18 @@ export default function App() {
     );
   }
 
-  // UPDATED: Get Started now takes the user to onboarding, not login
+  // ⬅️ CHANGE #1: Get Started → Login (signup mode)
   const handleGetStarted = () => {
-    setCurrentScreen('onboarding');
+    setLoginMode('signup');
+    setCurrentScreen('login');
   };
 
-  // Splash → Login (for both "Continue with Google" and "Log In" actions from SplashScreen)
   const handleShowLogin = () => {
     setLoginMode('login');
     setCurrentScreen('login');
   };
 
-  /**
-   * Handles login/signup completion from LoginScreen.
-   *
-   * Flow:
-   * 1. Check localStorage for existing user data with same email
-   * 2. If isLogin=true OR existing data found with hasCompletedOnboarding=true:
-   *    - Restore full user profile and go directly to home
-   * 3. If new user (no existing data or incomplete onboarding):
-   *    - Set basic auth info and go to onboarding flow
-   */
+  // Login complete handler
   const handleLogin = (authData: {
     email: string;
     name: string;
@@ -158,9 +147,7 @@ export default function App() {
     }
   };
 
-  const handleBackToSplash = () => {
-    setCurrentScreen('splash');
-  };
+  const handleBackToSplash = () => setCurrentScreen('splash');
 
   const handleOnboardingComplete = (
     data: Omit<UserData, 'email' | 'name' | 'authMethod' | 'hasCompletedOnboarding'>
@@ -213,18 +200,11 @@ export default function App() {
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl">
       {currentScreen === 'splash' && (
-        <SplashScreen
-          onGetStarted={handleGetStarted}
-          onLogin={handleShowLogin}
-        />
+        <SplashScreen onGetStarted={handleGetStarted} onLogin={handleShowLogin} />
       )}
 
       {currentScreen === 'login' && (
-        <LoginScreen
-          onLogin={handleLogin}
-          onBack={handleBackToSplash}
-          mode={loginMode}
-        />
+        <LoginScreen onLogin={handleLogin} onBack={handleBackToSplash} mode={loginMode} />
       )}
 
       {currentScreen === 'onboarding' && (
@@ -254,9 +234,7 @@ export default function App() {
         <EventDetail eventId={selectedEventId} onBack={handleBackToCommunity} />
       )}
 
-      {currentScreen === 'dashboard' && (
-        <OrganizerDashboard onBack={handleBackToHome} />
-      )}
+      {currentScreen === 'dashboard' && <OrganizerDashboard onBack={handleBackToHome} />}
 
       {currentScreen === 'profile' && (
         <ProfileScreen
@@ -272,10 +250,7 @@ export default function App() {
       )}
 
       {currentScreen === 'activity' && (
-        <MyActivityScreen
-          onBack={handleBackToHome}
-          onCommunitySelect={handleCommunitySelect}
-        />
+        <MyActivityScreen onBack={handleBackToHome} onCommunitySelect={handleCommunitySelect} />
       )}
     </div>
   );
