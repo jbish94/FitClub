@@ -203,6 +203,32 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </Button>
         </div>
       </div>
+      // in the component where you want to request location (e.g., OnboardingFlow)
+import { getBrowserLocation, reverseGeocode } from '../lib/location';
+
+// example click handler:
+const handleEnableLocation = async () => {
+  try {
+    const coords = await getBrowserLocation();
+    let place = {};
+    try {
+      place = await reverseGeocode(coords);
+    } catch {
+      // reverse geocode is best-effort; ok to fail silently
+    }
+    saveUserLocation({
+      lat: coords.lat,
+      lng: coords.lng,
+      accuracy: coords.accuracy,
+      ...(place as any),
+    });
+    // optionally proceed to next onboarding step
+  } catch (err: any) {
+    alert(err?.message || 'Location permission denied or failed.');
+    // consider setting locationEnabled=false and allowing a manual zip code path
+  }
+};
+
     </div>
   );
 }
