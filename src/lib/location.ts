@@ -53,3 +53,71 @@ export async function reverseGeocode(coords: Coords): Promise<Place> {
     country: a.country,
   };
 }
+
+// App.tsx (only the relevant additions/changes shown)
+import { getBrowserLocation, reverseGeocode, saveUserLocation, loadUserLocation } from './lib/location';
+// ...your other imports...
+
+type UserLocation = {
+  city?: string;
+  state?: string;
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
+};
+
+export default function App() {
+  // add this state
+  const [userLocation, setUserLocation] = useState<UserLocation | undefined>(undefined);
+
+  // load saved location on mount
+  useEffect(() => {
+    try {
+      const loc = loadUserLocation();
+      if (loc) setUserLocation(loc);
+    } catch (e) {
+      console.warn('No saved location yet');
+    }
+  }, []);
+
+  // refresh handler (wire this to the "Refresh" link)
+  const handleRefreshLocation = async () => {
+    try {
+      const coords = await getBrowserLocation();
+      let place: { city?: string; state?: string } = {};
+      try {
+        place = await reverseGeocode(coords);
+      } catch {
+        // reverse geocode can fail silently
+      }
+      const merged = { ...coords, ...place };
+      saveUserLocation(merged);
+      setUserLocation(merged);
+    } catch (err: any) {
+      alert(err?.message || 'Unable to retrieve location.');
+    }
+  };
+
+  // ...existing code...
+
+  return (
+    <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl">
+      {/* ...other routes/screens... */}
+
+      {currentScreen === 'home' && (
+        <HomeScreen
+          onCommunitySelect={handleCommunitySelect}
+          onProfileClick={handleProfileClick}
+          onDashboardClick={handleDashboardClick}
+          onActivityClick={handleActivityClick}
+          userType={userData.userType}
+          userInterests={userData.interests}
+          userLocation={userLocation}                 // <-- pass location
+          onRefreshLocation={handleRefreshLocation}   // <-- pass refresh
+        />
+      )}
+
+      {/* ...other routes/screens... */}
+    </div>
+  );
+}
