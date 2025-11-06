@@ -1,4 +1,11 @@
-import { MapPin } from 'lucide-react';
+import { useState } from 'react';
+import {
+  MapPin,
+  Home,
+  User,
+  LayoutDashboard,
+  Activity,
+} from 'lucide-react';
 import { Button } from './ui/button';
 
 interface HomeScreenProps {
@@ -27,48 +34,40 @@ export function HomeScreen({
   userLocation,
   onRefreshLocation,
 }: HomeScreenProps) {
+  // local tab (like before)
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'activity' | 'profile'>('home');
+
+  const displayLocation =
+    userLocation?.city
+      ? `${userLocation.city}${userLocation.state ? ', ' + userLocation.state : ''}`
+      : userLocation?.lat && userLocation?.lng
+      ? `(${userLocation.lat.toFixed(3)}, ${userLocation.lng.toFixed(3)})`
+      : 'Location unavailable';
+
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Welcome back 👋</h1>
-            <div className="flex items-center gap-1 text-gray-600 mt-1">
-              <MapPin className="w-4 h-4" />
-              <span className="text-sm">
-                {userLocation?.city
-                  ? `${userLocation.city}${userLocation.state ? ', ' + userLocation.state : ''}`
-                  : userLocation?.lat && userLocation?.lng
-                    ? `(${userLocation.lat.toFixed(3)}, ${userLocation.lng.toFixed(3)})`
-                    : 'Location unavailable'}
-              </span>
-              {onRefreshLocation && (
-                <button
-                  onClick={onRefreshLocation}
-                  className="ml-2 text-xs text-[#0066FF] hover:underline"
-                >
-                  Refresh
-                </button>
-              )}
-            </div>
-          </div>
-
-          <Button
-            variant="outline"
-            className="rounded-full px-4 py-2 text-sm"
-            onClick={onProfileClick}
-          >
-            Profile
-          </Button>
+        <h1 className="text-2xl font-semibold text-gray-900">Welcome back 👋</h1>
+        <div className="flex items-center gap-1 text-gray-600 mt-1">
+          <MapPin className="w-4 h-4" />
+          <span className="text-sm">{displayLocation}</span>
+          {onRefreshLocation && (
+            <button
+              onClick={onRefreshLocation}
+              className="ml-2 text-xs text-[#0066FF] hover:underline"
+            >
+              Refresh
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main content */}
+      {/* Content */}
       <div className="flex-1 p-6 space-y-6">
         <div>
           <h2 className="text-xl font-semibold mb-3">Your Interests</h2>
-          {userInterests.length > 0 ? (
+          {userInterests?.length ? (
             <div className="flex flex-wrap gap-2">
               {userInterests.map((interest) => (
                 <span
@@ -105,16 +104,50 @@ export function HomeScreen({
         </div>
       </div>
 
-      {/* Footer nav */}
-      <div className="p-4 border-t border-gray-200 flex justify-around bg-white">
-        <button onClick={onActivityClick} className="text-sm text-gray-600 hover:text-[#0066FF]">
-          My Activity
+      {/* Bottom Tab Bar – back to the original layout */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-around">
+        <button
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center gap-1 py-2 ${activeTab === 'home' ? 'text-[#0066FF]' : 'text-gray-500'}`}
+        >
+          <Home className="w-6 h-6" />
+          <span className="text-xs">Home</span>
         </button>
-        {userType === 'organizer' && (
-          <button onClick={onDashboardClick} className="text-sm text-gray-600 hover:text-[#0066FF]">
-            Dashboard
+
+        {userType === 'organizer' ? (
+          <button
+            onClick={() => {
+              setActiveTab('dashboard');
+              onDashboardClick();
+            }}
+            className={`flex flex-col items-center gap-1 py-2 ${activeTab === 'dashboard' ? 'text-[#0066FF]' : 'text-gray-500'}`}
+          >
+            <LayoutDashboard className="w-6 h-6" />
+            <span className="text-xs">Dashboard</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              setActiveTab('activity');
+              onActivityClick();
+            }}
+            className={`flex flex-col items-center gap-1 py-2 ${activeTab === 'activity' ? 'text-[#0066FF]' : 'text-gray-500'}`}
+          >
+            <Activity className="w-6 h-6" />
+            <span className="text-xs">My Activity</span>
           </button>
         )}
+
+        <button
+          onClick={() => {
+            setActiveTab('profile');
+            onProfileClick();
+          }}
+          className={`flex flex-col items-center gap-1 py-2 ${activeTab === 'profile' ? 'text-[#0066FF]' : 'text-gray-500'}`}
+        >
+          <User className="w-6 h-6" />
+          <span className="text-xs">Profile</span>
+        </button>
       </div>
     </div>
   );
