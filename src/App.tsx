@@ -325,3 +325,30 @@ export default function App() {
     </div>
   )
 }
+// near the top of App.tsx
+type UserLocation = {
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
+  city?: string;
+  state?: string;
+};
+
+interface UserData {
+  userType: string;
+  interests: string[];
+  locationEnabled: boolean;
+  email?: string;
+  name?: string;
+  authMethod?: 'google' | 'apple' | 'email';
+  hasCompletedOnboarding?: boolean;
+  userLocation?: UserLocation;   // <-- add this
+}
+// inside App component, before the return:
+const saveUserLocation = (loc: UserLocation) => {
+  setUserData(prev => {
+    const next = { ...prev, userLocation: loc, locationEnabled: true };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+    return next;
+  });
+};
