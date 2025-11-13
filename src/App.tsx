@@ -1,34 +1,24 @@
-// src/App.tsx
-import { useState, useEffect } from 'react';
-import { SplashScreen } from './components/SplashScreen';
-import { LoginScreen } from './components/LoginScreen';
-import { OnboardingFlow } from './components/OnboardingFlow';
-import { HomeScreen } from './components/HomeScreen';
-import { CommunityPage } from './components/CommunityPage';
-import { EventDetail } from './components/EventDetail';
-import { OrganizerDashboard } from './components/OrganizerDashboard';
-import { ProfileScreen } from './components/ProfileScreen';
-import { MyActivityScreen } from './components/MyActivityScreen';
-
-// ✅ Location helpers
-import {
-  getBrowserLocation,
-  reverseGeocode,
-  saveUserLocation,
-  loadUserLocation,
-  type UserLocation,
-} from './lib/location';
+import { useState, useEffect } from "react";
+import { SplashScreen } from "./components/SplashScreen";
+import { LoginScreen } from "./components/LoginScreen";
+import { OnboardingFlow } from "./components/OnboardingFlow";
+import { HomeScreen } from "./components/HomeScreen";
+import { CommunityPage } from "./components/CommunityPage";
+import { EventDetail } from "./components/EventDetail";
+import { OrganizerDashboard } from "./components/OrganizerDashboard";
+import { ProfileScreen } from "./components/ProfileScreen";
+import { MyActivityScreen } from "./components/MyActivityScreen";
 
 type Screen =
-  | 'splash'
-  | 'login'
-  | 'onboarding'
-  | 'home'
-  | 'community'
-  | 'event'
-  | 'dashboard'
-  | 'profile'
-  | 'activity';
+  | "splash"
+  | "login"
+  | "onboarding"
+  | "home"
+  | "community"
+  | "event"
+  | "dashboard"
+  | "profile"
+  | "activity";
 
 interface UserData {
   userType: string;
@@ -36,61 +26,69 @@ interface UserData {
   locationEnabled: boolean;
   email?: string;
   name?: string;
-  authMethod?: 'google' | 'apple' | 'email';
+  authMethod?: "google" | "apple" | "email";
   hasCompletedOnboarding?: boolean;
 }
 
-const STORAGE_KEY = 'fitclub_user_data';
+const STORAGE_KEY = "fitclub_user_data";
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
-  const [loginMode, setLoginMode] = useState<'login' | 'signup'>('signup');
+  const [currentScreen, setCurrentScreen] =
+    useState<Screen>("splash");
+  const [loginMode, setLoginMode] = useState<
+    "login" | "signup"
+  >("signup");
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<UserData>({
-    userType: '',
+    userType: "",
     interests: [],
     locationEnabled: false,
-    email: '',
-    name: '',
+    email: "",
+    name: "",
     authMethod: undefined,
     hasCompletedOnboarding: false,
   });
-  const [selectedCommunityId, setSelectedCommunityId] = useState<string>('');
-  const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [selectedCommunityId, setSelectedCommunityId] =
+    useState<string>("");
+  const [selectedEventId, setSelectedEventId] =
+    useState<string>("");
 
-  // ✅ location state (shown on HomeScreen header)
-  const [userLocation, setUserLocation] = useState<UserLocation | undefined>(undefined);
-
-  // Load user data & saved location on mount
+  // Load user data from localStorage on mount
   useEffect(() => {
-    try {
-      const storedData = localStorage.getItem(STORAGE_KEY);
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        setUserData(parsedData);
-        if (parsedData.email && parsedData.hasCompletedOnboarding) {
-          setCurrentScreen('home');
+    const loadUserData = () => {
+      try {
+        const storedData = localStorage.getItem(STORAGE_KEY);
+        if (storedData) {
+          const parsedData = JSON.parse(storedData);
+          setUserData(parsedData);
+          // If user is logged in and has completed onboarding, go directly to home
+          if (
+            parsedData.email &&
+            parsedData.hasCompletedOnboarding
+          ) {
+            setCurrentScreen("home");
+          }
         }
+      } catch (error) {
+        console.error("Error loading user data:", error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    };
 
-    try {
-      const saved = loadUserLocation();
-      if (saved) setUserLocation(saved);
-    } catch {}
+    loadUserData();
   }, []);
 
   // Save user data to localStorage whenever it changes
   useEffect(() => {
     if (userData.email) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(userData),
+        );
       } catch (error) {
-        console.error('Error saving user data:', error);
+        console.error("Error saving user data:", error);
       }
     }
   }, [userData]);
@@ -108,13 +106,13 @@ export default function App() {
   }
 
   const handleGetStarted = () => {
-    setLoginMode('signup');
-    setCurrentScreen('login');
+    setLoginMode("signup");
+    setCurrentScreen("login");
   };
 
   const handleShowLogin = () => {
-    setLoginMode('login');
-    setCurrentScreen('login');
+    setLoginMode("login");
+    setCurrentScreen("login");
   };
 
   /**
@@ -132,29 +130,37 @@ export default function App() {
   const handleLogin = (authData: {
     email: string;
     name: string;
-    authMethod: 'google' | 'apple' | 'email';
+    authMethod: "google" | "apple" | "email";
     isLogin: boolean;
   }) => {
+    // Check if user has existing data (returning user)
     const existingData = localStorage.getItem(STORAGE_KEY);
     let isReturningUser = false;
-    let existingUserData: UserData | null = null;
+    let existingUserData = null;
 
     if (existingData) {
       try {
         const parsedData = JSON.parse(existingData);
-        if (authData.isLogin || (parsedData.email === authData.email && parsedData.hasCompletedOnboarding)) {
+        // If user clicked "Log In" or has matching email with completed onboarding
+        if (
+          authData.isLogin ||
+          (parsedData.email === authData.email &&
+            parsedData.hasCompletedOnboarding)
+        ) {
           isReturningUser = true;
           existingUserData = parsedData;
         }
       } catch (error) {
-        console.error('Error checking existing user:', error);
+        console.error("Error checking existing user:", error);
       }
     }
 
+    // If returning user, restore their full profile data (includes interests, userType, location)
     if (isReturningUser && existingUserData) {
       setUserData(existingUserData);
-      setCurrentScreen('home');
+      setCurrentScreen("home");
     } else {
+      // New user - set basic auth data and go to onboarding
       setUserData((prev) => ({
         ...prev,
         email: authData.email,
@@ -162,21 +168,26 @@ export default function App() {
         authMethod: authData.authMethod,
         hasCompletedOnboarding: false,
       }));
-      setCurrentScreen('onboarding');
+      setCurrentScreen("onboarding");
     }
   };
 
   const handleBackToSplash = () => {
-    setCurrentScreen('splash');
+    setCurrentScreen("splash");
   };
 
-  const handleOnboardingComplete = (data: Omit<UserData, 'email' | 'name' | 'authMethod' | 'hasCompletedOnboarding'>) => {
+  const handleOnboardingComplete = (
+    data: Omit<
+      UserData,
+      "email" | "name" | "authMethod" | "hasCompletedOnboarding"
+    >,
+  ) => {
     setUserData((prev) => ({
       ...prev,
       ...data,
       hasCompletedOnboarding: true,
     }));
-    setCurrentScreen('home');
+    setCurrentScreen("home");
   };
 
   const handleUpdateInterests = (newInterests: string[]) => {
@@ -190,80 +201,69 @@ export default function App() {
     // Clear user data and return to splash
     localStorage.removeItem(STORAGE_KEY);
     setUserData({
-      userType: '',
+      userType: "",
       interests: [],
       locationEnabled: false,
-      email: '',
-      name: '',
+      email: "",
+      name: "",
       authMethod: undefined,
       hasCompletedOnboarding: false,
     });
-    setCurrentScreen('splash');
+    setCurrentScreen("splash");
   };
 
   const handleCommunitySelect = (communityId: string) => {
     setSelectedCommunityId(communityId);
-    setCurrentScreen('community');
+    setCurrentScreen("community");
   };
 
   const handleEventSelect = (eventId: string) => {
     setSelectedEventId(eventId);
-    setCurrentScreen('event');
+    setCurrentScreen("event");
   };
 
   const handleBackToHome = () => {
-    setCurrentScreen('home');
+    setCurrentScreen("home");
   };
 
   const handleBackToCommunity = () => {
-    setCurrentScreen('community');
+    setCurrentScreen("community");
   };
 
   const handleProfileClick = () => {
-    setCurrentScreen('profile');
+    setCurrentScreen("profile");
   };
 
   const handleDashboardClick = () => {
-    setCurrentScreen('dashboard');
+    setCurrentScreen("dashboard");
   };
 
   const handleActivityClick = () => {
-    setCurrentScreen('activity');
-  };
-
-  // ✅ Refresh location handler (passed to HomeScreen)
-  const handleRefreshLocation = async () => {
-    try {
-      const coords = await getBrowserLocation();
-      let place: { city?: string; state?: string; country?: string } = {};
-      try {
-        place = await reverseGeocode(coords);
-      } catch {
-        // fine to fail silently; coords will still show
-      }
-      const merged: UserLocation = { ...coords, ...place };
-      saveUserLocation(merged);
-      setUserLocation(merged);
-    } catch (err: any) {
-      alert(err?.message || 'Unable to retrieve location.');
-    }
+    setCurrentScreen("activity");
   };
 
   return (
     <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl">
-      {currentScreen === 'splash' && (
-        <SplashScreen onGetStarted={handleGetStarted} onLogin={handleShowLogin} />
+      {currentScreen === "splash" && (
+        <SplashScreen
+          onGetStarted={handleGetStarted}
+          onLogin={handleShowLogin}
+        />
       )}
 
-      {currentScreen === 'login' && (
-        <LoginScreen onLogin={handleLogin} onBack={handleBackToSplash} mode={loginMode} />
+      {currentScreen === "login" && (
+        <LoginScreen
+          onLogin={handleLogin}
+          onBack={handleBackToSplash}
+          mode={loginMode}
+        />
       )}
 
-      {currentScreen === 'onboarding' && (
+      {currentScreen === "onboarding" && (
         <OnboardingFlow onComplete={handleOnboardingComplete} />
       )}
 
-      {currentScreen === 'home' && (
+      {currentScreen === "home" && (
         <HomeScreen
           onCommunitySelect={handleCommunitySelect}
           onProfileClick={handleProfileClick}
@@ -271,24 +271,29 @@ export default function App() {
           onActivityClick={handleActivityClick}
           userType={userData.userType}
           userInterests={userData.interests}
-          userLocation={userLocation}               // <-- shows in header
-          onRefreshLocation={handleRefreshLocation} // <-- "Refresh" link
         />
       )}
 
-      {currentScreen === 'community' && (
-        <CommunityPage communityId={selectedCommunityId} onBack={handleBackToHome} onEventSelect={handleEventSelect} />
+      {currentScreen === "community" && (
+        <CommunityPage
+          communityId={selectedCommunityId}
+          onBack={handleBackToHome}
+          onEventSelect={handleEventSelect}
+        />
       )}
 
-      {currentScreen === 'event' && (
-        <EventDetail eventId={selectedEventId} onBack={handleBackToCommunity} />
+      {currentScreen === "event" && (
+        <EventDetail
+          eventId={selectedEventId}
+          onBack={handleBackToCommunity}
+        />
       )}
 
-      {currentScreen === 'dashboard' && (
+      {currentScreen === "dashboard" && (
         <OrganizerDashboard onBack={handleBackToHome} />
       )}
 
-      {currentScreen === 'profile' && (
+      {currentScreen === "profile" && (
         <ProfileScreen
           onBack={handleBackToHome}
           userType={userData.userType}
@@ -301,8 +306,11 @@ export default function App() {
         />
       )}
 
-      {currentScreen === 'activity' && (
-        <MyActivityScreen onBack={handleBackToHome} onCommunitySelect={handleCommunitySelect} />
+      {currentScreen === "activity" && (
+        <MyActivityScreen
+          onBack={handleBackToHome}
+          onCommunitySelect={handleCommunitySelect}
+        />
       )}
     </div>
   );
