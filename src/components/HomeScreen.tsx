@@ -11,14 +11,12 @@ type UserLocation = {
 }
 
 interface HomeScreenProps {
-  onCommunitySelect: (id: string) => void
-  onProfileClick: () => void
-  onDashboardClick?: () => void          // unused for member view; kept for parity
-  onActivityClick?: () => void
-  userType: string
-  userInterests: string[]
-  userLocation?: UserLocation
-  onRefreshLocation?: () => void
+  onCommunitySelect: (communityId: string) => void;
+  onProfileClick: () => void;
+  onDashboardClick?: () => void;
+  onActivityClick?: () => void;
+  userType: string;
+  userInterests?: string[];
 }
 
 /** --- MOCK DATA (prototype) --- */
