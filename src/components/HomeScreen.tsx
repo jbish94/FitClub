@@ -22,29 +22,58 @@ interface HomeScreenProps {
 }
 
 /** --- MOCK DATA (prototype) --- */
-const MOCK_COMMUNITIES = [
+const mockCommunities: Community[] = [
   {
-    id: 'yoga',
-    name: '🧘 Yoga Lovers',
-    subtitle: 'Weekly classes nearby',
+    id: '1',
+    name: 'Sunrise Runners',
+    image: 'https://images.unsplash.com/photo-1758512867379-30c5e04f155c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+    distance: '0.5 mi',
+    members: 234,
+    nextEvent: 'Tomorrow, 6:00 AM',
+    activity: 'Running',
+    price: 'Free'
   },
   {
-    id: 'run',
-    name: '🏃 Run Club',
-    subtitle: 'Weekend runs',
+    id: '2',
+    name: 'Zen Flow Yoga',
+    image: 'https://images.unsplash.com/photo-1758274525134-4b1e9cc67dbb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+    distance: '1.2 mi',
+    members: 189,
+    nextEvent: 'Wed, 7:00 PM',
+    activity: 'Yoga',
+    price: '$15'
   },
   {
-    id: 'cf',
-    name: '🏋️ CrossFit 6AM',
-    subtitle: 'Mon/Wed/Fri',
+    id: '3',
+    name: 'Outdoor HIIT Warriors',
+    image: 'https://images.unsplash.com/photo-1758521959291-e1dd95419b21?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+    distance: '2.1 mi',
+    members: 156,
+    nextEvent: 'Sat, 8:00 AM',
+    activity: 'CrossFit',
+    price: '$20'
   },
   {
-    id: 'pickle',
-    name: '🎾 Pickleball Park',
-    subtitle: 'Open play Tue/Thu',
+    id: '4',
+    name: 'Pickleball League',
+    image: 'https://images.unsplash.com/photo-1669684899238-64c4abe4d3cc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+    distance: '1.8 mi',
+    members: 312,
+    nextEvent: 'Today, 5:00 PM',
+    activity: 'Pickleball',
+    price: '$10'
   },
-]
-
+  {
+    id: '5',
+    name: 'Weekend Cyclists',
+    image: 'https://images.unsplash.com/photo-1735216228027-fe31c23474ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
+    distance: '3.2 mi',
+    members: 445,
+    nextEvent: 'Sun, 7:00 AM',
+    activity: 'Cycling',
+    price: 'Free'
+  }
+];
 export function HomeScreen({
   onCommunitySelect,
   onProfileClick,
