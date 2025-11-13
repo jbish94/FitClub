@@ -1,61 +1,77 @@
-import { useState } from 'react';
-import {
-  MapPin,
-  Home,
-  User,
-  LayoutDashboard,
-  Activity,
-} from 'lucide-react';
-import { Button } from './ui/button';
+// src/components/HomeScreen.tsx
+import React from 'react'
+import { MapPin, Home, Activity, User } from 'lucide-react'
+import { Button } from './ui/button'
+
+type UserLocation = {
+  city?: string
+  state?: string
+  lat?: number
+  lng?: number
+}
 
 interface HomeScreenProps {
-  onCommunitySelect: (id: string) => void;
-  onProfileClick: () => void;
-  onDashboardClick: () => void;
-  onActivityClick: () => void;
-  userType: string;
-  userInterests: string[];
-  userLocation?: {
-    city?: string;
-    state?: string;
-    lat?: number;
-    lng?: number;
-  };
-  onRefreshLocation?: () => void;
+  onCommunitySelect: (id: string) => void
+  onProfileClick: () => void
+  onDashboardClick?: () => void          // unused for member view; kept for parity
+  onActivityClick?: () => void
+  userType: string
+  userInterests: string[]
+  userLocation?: UserLocation
+  onRefreshLocation?: () => void
 }
+
+/** --- MOCK DATA (prototype) --- */
+const MOCK_COMMUNITIES = [
+  {
+    id: 'yoga',
+    name: '🧘 Yoga Lovers',
+    subtitle: 'Weekly classes nearby',
+  },
+  {
+    id: 'run',
+    name: '🏃 Run Club',
+    subtitle: 'Weekend runs',
+  },
+  {
+    id: 'cf',
+    name: '🏋️ CrossFit 6AM',
+    subtitle: 'Mon/Wed/Fri',
+  },
+  {
+    id: 'pickle',
+    name: '🎾 Pickleball Park',
+    subtitle: 'Open play Tue/Thu',
+  },
+]
 
 export function HomeScreen({
   onCommunitySelect,
   onProfileClick,
-  onDashboardClick,
   onActivityClick,
   userType,
   userInterests,
   userLocation,
   onRefreshLocation,
 }: HomeScreenProps) {
-  // local tab (like before)
-  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'activity' | 'profile'>('home');
-
-  const displayLocation =
-    userLocation?.city
-      ? `${userLocation.city}${userLocation.state ? ', ' + userLocation.state : ''}`
-      : userLocation?.lat && userLocation?.lng
-      ? `(${userLocation.lat.toFixed(3)}, ${userLocation.lng.toFixed(3)})`
-      : 'Location unavailable';
-
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="flex flex-col min-h-screen bg-white">
+
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Welcome back 👋</h1>
-        <div className="flex items-center gap-1 text-gray-600 mt-1">
+
+        <div className="flex items-center gap-2 text-gray-600 mt-2">
           <MapPin className="w-4 h-4" />
-          <span className="text-sm">{displayLocation}</span>
+          <span className="text-sm">
+            {userLocation?.city
+              ? `${userLocation.city}${userLocation.state ? ', ' + userLocation.state : ''}`
+              : 'Location unavailable'}
+          </span>
           {onRefreshLocation && (
             <button
               onClick={onRefreshLocation}
-              className="ml-2 text-xs text-[#0066FF] hover:underline"
+              className="text-xs text-[#0066FF] hover:underline"
             >
               Refresh
             </button>
@@ -63,92 +79,70 @@ export function HomeScreen({
         </div>
       </div>
 
-      {/* Content */}
+      {/* Body */}
       <div className="flex-1 p-6 space-y-6">
-        <div>
+        {/* Interests */}
+        <section>
           <h2 className="text-xl font-semibold mb-3">Your Interests</h2>
           {userInterests?.length ? (
             <div className="flex flex-wrap gap-2">
-              {userInterests.map((interest) => (
+              {userInterests.map((i) => (
                 <span
-                  key={interest}
+                  key={i}
                   className="px-3 py-1 bg-blue-50 text-[#0066FF] rounded-full text-sm"
                 >
-                  {interest}
+                  {i}
                 </span>
               ))}
             </div>
           ) : (
             <p className="text-gray-500 text-sm">No interests selected yet.</p>
           )}
-        </div>
+        </section>
 
-        <div>
+        {/* Explore Communities (mock cards) */}
+        <section>
           <h2 className="text-xl font-semibold mb-3">Explore Communities</h2>
           <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => onCommunitySelect('1')}
-              className="p-4 bg-blue-50 rounded-xl text-left hover:bg-blue-100"
-            >
-              🧘 Yoga Lovers
-              <p className="text-xs text-gray-500">Weekly classes nearby</p>
-            </button>
-            <button
-              onClick={() => onCommunitySelect('2')}
-              className="p-4 bg-blue-50 rounded-xl text-left hover:bg-blue-100"
-            >
-              🏃 Run Club
-              <p className="text-xs text-gray-500">Weekend runs</p>
-            </button>
+            {MOCK_COMMUNITIES.slice(0, 4).map((c) => (
+              <button
+                key={c.id}
+                onClick={() => onCommunitySelect(c.id)}
+                className="p-4 bg-blue-50 rounded-xl text-left hover:bg-blue-100 transition-colors"
+              >
+                <div className="font-medium">{c.name}</div>
+                <p className="text-xs text-gray-500 mt-1">{c.subtitle}</p>
+              </button>
+            ))}
           </div>
+        </section>
+      </div>
+
+      {/* Bottom Tabs (Home / My Activity / Profile) */}
+      <nav className="p-3 border-t border-gray-200 flex justify-around bg-white">
+        <div className="flex flex-col items-center text-[#0066FF]">
+          <Home className="w-5 h-5" />
+          <span className="text-xs mt-1">Home</span>
         </div>
-      </div>
-
-      {/* Bottom Tab Bar – back to the original layout */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 flex items-center justify-around">
-        <button
-          onClick={() => setActiveTab('home')}
-          className={`flex flex-col items-center gap-1 py-2 ${activeTab === 'home' ? 'text-[#0066FF]' : 'text-gray-500'}`}
-        >
-          <Home className="w-6 h-6" />
-          <span className="text-xs">Home</span>
-        </button>
-
-        {userType === 'organizer' ? (
-          <button
-            onClick={() => {
-              setActiveTab('dashboard');
-              onDashboardClick();
-            }}
-            className={`flex flex-col items-center gap-1 py-2 ${activeTab === 'dashboard' ? 'text-[#0066FF]' : 'text-gray-500'}`}
-          >
-            <LayoutDashboard className="w-6 h-6" />
-            <span className="text-xs">Dashboard</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => {
-              setActiveTab('activity');
-              onActivityClick();
-            }}
-            className={`flex flex-col items-center gap-1 py-2 ${activeTab === 'activity' ? 'text-[#0066FF]' : 'text-gray-500'}`}
-          >
-            <Activity className="w-6 h-6" />
-            <span className="text-xs">My Activity</span>
-          </button>
-        )}
 
         <button
-          onClick={() => {
-            setActiveTab('profile');
-            onProfileClick();
-          }}
-          className={`flex flex-col items-center gap-1 py-2 ${activeTab === 'profile' ? 'text-[#0066FF]' : 'text-gray-500'}`}
+          onClick={onActivityClick}
+          className="flex flex-col items-center text-gray-500 hover:text-[#0066FF]"
         >
-          <User className="w-6 h-6" />
-          <span className="text-xs">Profile</span>
+          <Activity className="w-5 h-5" />
+          <span className="text-xs mt-1">My Activity</span>
         </button>
-      </div>
+
+        <button
+          onClick={onProfileClick}
+          className="flex flex-col items-center text-gray-500 hover:text-[#0066FF]"
+        >
+          <User className="w-5 h-5" />
+          <span className="text-xs mt-1">Profile</span>
+        </button>
+      </nav>
     </div>
-  );
+  )
 }
+
+export default HomeScreen
