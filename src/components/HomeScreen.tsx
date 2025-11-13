@@ -1,7 +1,5 @@
 // src/components/HomeScreen.tsx
-import React from 'react'
 import { MapPin, Home, Activity, User } from 'lucide-react'
-import { Button } from './ui/button'
 
 type UserLocation = {
   city?: string
@@ -11,79 +9,57 @@ type UserLocation = {
 }
 
 interface HomeScreenProps {
-  onCommunitySelect: (communityId: string) => void;
-  onProfileClick: () => void;
-  onDashboardClick?: () => void;
-  onActivityClick?: () => void;
-  userType: string;
-  userInterests?: string[];
+  onCommunitySelect: (communityId: string) => void
+  onProfileClick: () => void
+  onDashboardClick?: () => void   // kept for future use
+  onActivityClick?: () => void
+  userType: string
+  userInterests?: string[]
+  userLocation?: UserLocation
+  onRefreshLocation?: () => void
 }
 
 /** --- MOCK DATA (prototype) --- */
-const mockCommunities: Community[] = [
+type MockCommunity = {
+  id: string
+  name: string
+  subtitle: string
+}
+
+const MOCK_COMMUNITIES: MockCommunity[] = [
   {
     id: '1',
     name: 'Sunrise Runners',
-    image: 'https://images.unsplash.com/photo-1758512867379-30c5e04f155c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
-    distance: '0.5 mi',
-    members: 234,
-    nextEvent: 'Tomorrow, 6:00 AM',
-    activity: 'Running',
-    price: 'Free'
+    subtitle: 'Morning runs & new routes'
   },
   {
     id: '2',
     name: 'Zen Flow Yoga',
-    image: 'https://images.unsplash.com/photo-1758274525134-4b1e9cc67dbb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
-    distance: '1.2 mi',
-    members: 189,
-    nextEvent: 'Wed, 7:00 PM',
-    activity: 'Yoga',
-    price: '$15'
+    subtitle: 'Weekly classes nearby'
   },
   {
     id: '3',
     name: 'Outdoor HIIT Warriors',
-    image: 'https://images.unsplash.com/photo-1758521959291-e1dd95419b21?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
-    distance: '2.1 mi',
-    members: 156,
-    nextEvent: 'Sat, 8:00 AM',
-    activity: 'CrossFit',
-    price: '$20'
+    subtitle: 'High-intensity outdoor workouts'
   },
   {
     id: '4',
     name: 'Pickleball League',
-    image: 'https://images.unsplash.com/photo-1669684899238-64c4abe4d3cc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
-    distance: '1.8 mi',
-    members: 312,
-    nextEvent: 'Today, 5:00 PM',
-    activity: 'Pickleball',
-    price: '$10'
-  },
-  {
-    id: '5',
-    name: 'Weekend Cyclists',
-    image: 'https://images.unsplash.com/photo-1735216228027-fe31c23474ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800',
-    distance: '3.2 mi',
-    members: 445,
-    nextEvent: 'Sun, 7:00 AM',
-    activity: 'Cycling',
-    price: 'Free'
+    subtitle: 'Casual and competitive play'
   }
-];
+]
+
 export function HomeScreen({
   onCommunitySelect,
   onProfileClick,
   onActivityClick,
-  userType,
-  userInterests,
+  userType,              // not used yet, but kept for future logic
+  userInterests = [],
   userLocation,
-  onRefreshLocation,
+  onRefreshLocation
 }: HomeScreenProps) {
   return (
     <div className="flex flex-col min-h-screen bg-white">
-
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Welcome back 👋</h1>
@@ -92,7 +68,9 @@ export function HomeScreen({
           <MapPin className="w-4 h-4" />
           <span className="text-sm">
             {userLocation?.city
-              ? `${userLocation.city}${userLocation.state ? ', ' + userLocation.state : ''}`
+              ? `${userLocation.city}${
+                  userLocation.state ? ', ' + userLocation.state : ''
+                }`
               : 'Location unavailable'}
           </span>
           {onRefreshLocation && (
@@ -111,7 +89,7 @@ export function HomeScreen({
         {/* Interests */}
         <section>
           <h2 className="text-xl font-semibold mb-3">Your Interests</h2>
-          {userInterests?.length ? (
+          {userInterests.length ? (
             <div className="flex flex-wrap gap-2">
               {userInterests.map((i) => (
                 <span
@@ -131,7 +109,7 @@ export function HomeScreen({
         <section>
           <h2 className="text-xl font-semibold mb-3">Explore Communities</h2>
           <div className="grid grid-cols-2 gap-4">
-            {MOCK_COMMUNITIES.slice(0, 4).map((c) => (
+            {MOCK_COMMUNITIES.map((c) => (
               <button
                 key={c.id}
                 onClick={() => onCommunitySelect(c.id)}
